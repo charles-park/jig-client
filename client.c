@@ -142,8 +142,10 @@ int protocol_catch(ptc_var_t *var)
 	memset (rdata, 0, sizeof(PROTOCOL_DATA_SIZE));
 	switch (resp) {
 		case 'C':
-			for (i = 2; i < var->size -2; i++)
+			for (i = 2; i < var->size -2; i++) {
 				rdata[i] = var->buf[(var->p_sp +i) % var->size];
+				printf("%c", rdata[i]);
+			}
 		break;
 		case 'R':
 		default :
