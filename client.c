@@ -104,27 +104,6 @@ void time_display (jig_client_t *pclient)
 }
 
 //------------------------------------------------------------------------------
-void receive_check(ptc_grp_t *ptc_grp)
-{
-	__u8 idata, p_cnt;
-
-	if (queue_get (&ptc_grp->rx_q, &idata))
-		ptc_event (ptc_grp, idata);
-
-	for (p_cnt = 0; p_cnt < ptc_grp->pcnt; p_cnt++) {
-		if (ptc_grp->p[p_cnt].var.pass) {
-			char *msg = (char *)ptc_grp->p[p_cnt].var.arg;
-			ptc_grp->p[p_cnt].var.pass = false;
-			ptc_grp->p[p_cnt].var.open = true;
-			info ("pass message = %s\n", msg);
-			/*
-				cmd_id check & cmd_id++ if cmd_status == ok;
-			*/
-		}
-	}
-};
-
-//------------------------------------------------------------------------------
 int protocol_check(ptc_var_t *var)
 {
 	/* head & tail check with protocol size */
@@ -137,7 +116,7 @@ int protocol_check(ptc_var_t *var)
 int protocol_catch(ptc_var_t *var)
 {
 	int i;
-	char *rdata = (char *)var->arg, resp = var->buf[(var->p_sp + 1) % var->size];
+	char rdata[PROTOCOL_DATA_SIZE], resp = var->buf[(var->p_sp + 1) % var->size];
 
 	memset (rdata, 0, sizeof(PROTOCOL_DATA_SIZE));
 	switch (resp) {
@@ -216,23 +195,33 @@ void run_uart_cmd (jig_client_t *pclient, char cmd_id)
 }
 
 //------------------------------------------------------------------------------
+void catch_msg (ptc_var_t *var, __u8 *msg)
+{
+	int i;
+	/* header & cmd는 제외 */
+	for (i = 0; i < PROTOCOL_DATA_SIZE; i++)
+		msg[i] = var->buf[(var->p_sp + 2 + i) % var->size];
+}
+
+//------------------------------------------------------------------------------
 void recv_msg_check (jig_client_t *pclient, __s8 *msg)
 {
-	__s8 *ptr, cmd_id;
+	ptc_grp_t *ptc_grp = pclient->puart;
 	__u8 idata, p_cnt;
 
-	receive_check(pclient->puart);
-
 	/* uart data processing */
-	if (queue_get (&pclient->puart->rx_q, &idata))
-		ptc_event (pclient->puart, idata);
+	if (queue_get (&ptc_grp->rx_q, &idata))
+		ptc_event (ptc_grp, idata);
 
-	for (p_cnt = 0; p_cnt < pclient->puart->pcnt; p_cnt++) {
-		if (pclient->puart->p[p_cnt].var.pass) {
-			pclient->puart->p[p_cnt].var.pass = false;
-			pclient->puart->p[p_cnt].var.open = true;
+	for (p_cnt = 0; p_cnt < ptc_grp->pcnt; p_cnt++) {
+		if (ptc_grp->p[p_cnt].var.pass) {
+			__s8 *ptr, cmd_id;
 
+			catch_msg (&ptc_grp->p[p_cnt].var, msg);
 			info ("pass message = %s\n", msg);
+
+			ptc_grp->p[p_cnt].var.pass = false;
+			ptc_grp->p[p_cnt].var.open = true;
 			/*
 				cmd & cmd_id check;
 			*/
@@ -254,7 +243,7 @@ int client_main (jig_client_t *pclient)
 
 	if (ptc_grp_init (pclient->puart, 1)) {
 		if (!ptc_func_init (pclient->puart, 0, sizeof(protocol_t), 
-    							protocol_check, protocol_catch, MsgData))
+    							protocol_check, protocol_catch))
 			return 0;
 	}
 
