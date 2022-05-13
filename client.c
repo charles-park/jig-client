@@ -116,14 +116,12 @@ int protocol_check(ptc_var_t *var)
 int protocol_catch(ptc_var_t *var)
 {
 	int i;
-	char rdata[PROTOCOL_DATA_SIZE], resp = var->buf[(var->p_sp + 1) % var->size];
+	char resp = var->buf[(var->p_sp + 1) % var->size];
 
-	memset (rdata, 0, sizeof(PROTOCOL_DATA_SIZE));
 	switch (resp) {
 		case 'C':
 			for (i = 2; i < var->size -2; i++) {
-				rdata[i] = var->buf[(var->p_sp +i) % var->size];
-				printf("%c", rdata[i]);
+				printf("%c", var->buf[(var->p_sp +i) % var->size]);
 			}
 		break;
 		case 'R':
