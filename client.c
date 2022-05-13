@@ -166,7 +166,7 @@ void send_msg (jig_client_t *pclient, char cmd, __u8 cmd_id, char *pmsg)
 	s.head = '@';	s.tail = '#';
 	s.cmd  = cmd;
 
-	pos = sprintf(s.data, ",%03d,", cmd_id);
+	pos = sprintf(s.data, "%03d,", cmd_id);
 
 	if (pmsg != NULL) {
 		m_size = strlen(pmsg);
@@ -218,18 +218,32 @@ void run_uart_cmd (jig_client_t *pclient, char cmd_id)
 //------------------------------------------------------------------------------
 void recv_msg_check (jig_client_t *pclient, __s8 *msg)
 {
-	char *ptr, cmd_id;
+	__s8 *ptr, cmd_id;
+	__u8 idata, p_cnt;
 
-	if (pclient->puart->p->var.pass) {
-		pclient->puart->p->var.pass = false;
-		pclient->puart->p->var.open = true;
+	receive_check(pclient->puart);
 
-		ptr = strtok (msg, ",");	cmd_id = atoi(ptr);
+	/* uart data processing */
+	if (queue_get (&pclient->puart->rx_q, &idata))
+		ptc_event (pclient->puart, idata);
 
-		ptr = strtok (NULL, ",");
-		if (!strncmp(ptr,  "GPIO", strlen("GPIO")))	run_gpio_cmd (pclient, cmd_id);
-		if (!strncmp(ptr,   "USB", strlen("USB")))	run_usb_cmd  (pclient, cmd_id);
-		if (!strncmp(ptr,  "UART", strlen("UART")))	run_uart_cmd (pclient, cmd_id);
+	for (p_cnt = 0; p_cnt < pclient->puart->pcnt; p_cnt++) {
+		if (pclient->puart->p[p_cnt].var.pass) {
+			pclient->puart->p[p_cnt].var.pass = false;
+			pclient->puart->p[p_cnt].var.open = true;
+
+			info ("pass message = %s\n", msg);
+			/*
+				cmd & cmd_id check;
+			*/
+			ptr = strtok (msg, ",");	cmd_id = atoi(ptr);
+
+			ptr = strtok (NULL, ",");
+			if (!strncmp(ptr,  "GPIO", strlen("GPIO")))	run_gpio_cmd (pclient, cmd_id);
+			if (!strncmp(ptr,   "USB", strlen("USB")))	run_usb_cmd  (pclient, cmd_id);
+			if (!strncmp(ptr,  "UART", strlen("UART")))	run_uart_cmd (pclient, cmd_id);
+			memset(msg, 0, PROTOCOL_DATA_SIZE);
+		}
 	}
 }
 
@@ -246,9 +260,6 @@ int client_main (jig_client_t *pclient)
 
 	while (1) {
 		time_display(pclient);
-
-		/* uart data processing */
-		receive_check(pclient->puart);
 
 		recv_msg_check (pclient, MsgData);
 
