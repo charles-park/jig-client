@@ -137,7 +137,7 @@ int protocol_check(ptc_var_t *var)
 int protocol_catch(ptc_var_t *var)
 {
 	int i;
-	char *rdata = (char *)var->arg, resp = var->buf[(var->p_sp) % var->size];
+	char *rdata = (char *)var->arg, resp = var->buf[(var->p_sp + 1) % var->size];
 
 	memset (rdata, 0, sizeof(PROTOCOL_DATA_SIZE));
 	switch (resp) {
