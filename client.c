@@ -167,8 +167,8 @@ void run_gpio_cmd (jig_client_t *pclient, char cmd_id)
 	memset (adc_pin, 0, sizeof(adc_pin));
 	ptr = strtok (NULL, ",");	strncpy(adc_pin, ptr, strlen(ptr));
 	ptr = strtok (NULL, ",");	gpio_no    = atoi(ptr);
-	ptr = strtok (NULL, ",");	gpio_level = atoi(ptr);
 	ptr = strtok (NULL, ",");	ui_id      = atoi(ptr);
+	ptr = strtok (NULL, ",");	gpio_level = atoi(ptr);
 
 	// gpio_control (gpio_no, gpio_level);
 	// gpio_get_level = gpio_level_confirm (gpio_no)
